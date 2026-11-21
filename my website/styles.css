@@ -130,6 +130,15 @@ html[data-theme="light"] .entry-screen .theme-toggle{color:#626c80;background:#f
 @media(min-width:421px) and (max-width:760px){.subject-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.subject-card{height:100%;padding:12px}.subject-card h3{font-size:11px}.subject-card p{font-size:8px}.subject-card-bottom{font-size:8px}.subject-card .card-count{font-size:6px}}
 @media(max-width:390px){.term-tag{display:none}.topbar{padding:0 10px}.mobile-brand{gap:5px}.mobile-brand-name{font-size:9px}.page-content{padding-left:14px;padding-right:14px}.welcome-banner{min-height:145px;padding:17px 15px}.group-chip{max-width:116px;white-space:normal;line-height:1.35}.quiz-launch{white-space:normal;max-width:88px}.result-subtitle{align-items:flex-start;flex-direction:column}.result-saved{align-self:flex-start}}
 @media(prefers-reduced-motion:reduce){.sidebar,.app-menu-toggle span{transition:none!important}}
+.pyq-section{margin-top:32px;padding-top:25px;border-top:1px solid #e8eaf1}
+.pyq-section .section-heading{margin-top:0}
+.pyq-quiz-list{margin-top:14px}
+.pyq-quiz-card{min-height:92px}
+.pyq-source-note{margin-top:13px;font-size:10px;line-height:1.55}
+.question-source{display:block;margin-top:11px;color:#778198;font-size:9px;line-height:1.5}
+html[data-theme="dark"] .pyq-section{border-color:#292f48}
+html[data-theme="dark"] .question-source{color:#a0a9bd}
+@media(max-width:760px){.pyq-section{margin-top:25px;padding-top:20px}.pyq-source-note{font-size:8px}.pyq-quiz-card{min-height:82px}.question-source{font-size:7px}}
 .question-card .question-prompt,.review-question h3{white-space:pre-line}
 .question-diagram{margin:0 0 17px;border:1px solid #e8e9f0;border-radius:8px;background:#fff;padding:8px}
 .question-diagram img{display:block;width:100%;height:auto;max-height:430px;object-fit:contain}

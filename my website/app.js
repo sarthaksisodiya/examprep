@@ -14,6 +14,7 @@
     entryGroup: savedGroup || "MT",
     subject: null,
     chapter: null,
+    selectedPyqQuizId: null,
     quiz: null,
     answers: [],
     questionIndex: 0,
@@ -102,7 +103,10 @@
     const body = subject.direct
       ? `<div class="empty-topic"><span class="empty-icon">✳</span><h3>Topic practice is on the way</h3><p>We’ll add ${escapeHtml(subject.name)} topics here as soon as the topic list is ready.</p><span class="sample-label">CONTENT COMING SOON</span></div>`
       : `<div class="chapter-list">${subject.chapters.map((chapter, i) => `<button class="chapter-row" data-chapter="${escapeHtml(chapter)}"><span class="chapter-number">${String(i + 1).padStart(2, "0")}</span><span class="chapter-name"><b>${escapeHtml(chapter)}</b><small>4 practice sets · ~10 questions each</small></span><span class="chapter-progress"><span class="progress-track"><span style="width:0%"></span></span><small>Not started</small></span><span class="chapter-arrow">→</span></button>`).join("")}</div>`;
-    const content = `<section class="page-content"><button class="back-link" data-nav="dashboard">← <span>All subjects</span></button><div class="subject-intro"><span class="subject-icon large ${subject.color}">${subject.icon}</span><div><span class="eyebrow">${escapeHtml(state.group)} GROUP · SUBJECT</span><h1>${escapeHtml(subject.name)}</h1><p>${subject.direct ? "Explore topic-wise practice sets." : `${subject.chapters.length} chapters to explore at your own pace.`}</p></div></div><div class="section-heading compact"><div><span class="eyebrow">${subject.direct ? "GET STARTED" : "COURSE CONTENT"}</span><h2>${subject.direct ? "Topic practice" : "Chapters"}</h2></div>${!subject.direct ? `<span class="group-chip">${subject.chapters.length} CHAPTERS</span>` : ""}</div>${body}<div class="coming-strip"><span class="strip-icon">✦</span><span><b>More practice is coming soon.</b><small>Question sets are being prepared for this subject.</small></span><span class="strip-badge">IN THE WORKS</span></div></section>`;
+    const pyqQuizzes = subject.id === "mathematics" && state.group === "MT" && Array.isArray(data.pyqQuizSets)
+      ? `<section class="pyq-section"><div class="section-heading compact"><div><span class="eyebrow">FROM MANIT MATHEMATICS-I PAPERS</span><h2>Previous-year practice</h2><p>Three mixed-chapter quizzes adapted from the uploaded MANIT papers.</p></div><span class="group-chip">30 QUESTIONS</span></div><div class="quiz-list pyq-quiz-list">${data.pyqQuizSets.map((quiz, index) => `<article class="quiz-card pyq-quiz-card"><span class="quiz-index">${String(index + 1).padStart(2, "0")}</span><div class="quiz-info"><span class="level-pill ${quiz.color}">${escapeHtml(quiz.level)} · ${escapeHtml(quiz.difficulty)}</span><h3>${escapeHtml(quiz.name)}</h3><p>${quiz.questions.length} questions · ${escapeHtml(quiz.duration)} · PYQ adapted</p></div><button class="quiz-launch ready" type="button" data-pyq-quiz="${escapeHtml(quiz.id)}">Start quiz <span>→</span></button></article>`).join("")}</div><div class="sample-notice pyq-source-note"><span>ⓘ</span><span><b>Source integrity:</b> Questions are marked PYQ-adapted and cite the paper they came from. Wording or values may be normalized for objective format; no item is presented as a verbatim scanned question.</span></div></section>`
+      : "";
+    const content = `<section class="page-content"><button class="back-link" data-nav="dashboard">← <span>All subjects</span></button><div class="subject-intro"><span class="subject-icon large ${subject.color}">${subject.icon}</span><div><span class="eyebrow">${escapeHtml(state.group)} GROUP · SUBJECT</span><h1>${escapeHtml(subject.name)}</h1><p>${subject.direct ? "Explore topic-wise practice sets." : `${subject.chapters.length} chapters to explore at your own pace.`}</p></div></div><div class="section-heading compact"><div><span class="eyebrow">${subject.direct ? "GET STARTED" : "COURSE CONTENT"}</span><h2>${subject.direct ? "Topic practice" : "Chapters"}</h2></div>${!subject.direct ? `<span class="group-chip">${subject.chapters.length} CHAPTERS</span>` : ""}</div>${body}${pyqQuizzes}<div class="coming-strip"><span class="strip-icon">✦</span><span><b>More practice is coming soon.</b><small>Question sets are being prepared for this subject.</small></span><span class="strip-badge">IN THE WORKS</span></div></section>`;
     return shell(content, "subject");
   }
 
@@ -135,7 +139,9 @@
     const diagram = question.diagram ? `<figure class="question-diagram"><img src="${escapeHtml(question.diagram)}" alt="Truss diagram for question ${state.questionIndex + 1}" /><figcaption>Question ${state.questionIndex + 1} diagram</figcaption></figure>` : "";
     const answeredCount = state.answers.filter(hasAnswer).length;
     const marksLabel = question.marks == null ? "PRACTICE" : `${question.marks} MARKS`;
-    const content = `<section class="page-content quiz-taking"><button class="back-link" data-nav="quizzes">← <span>Back to practice sets</span></button><div class="attempt-heading"><div><span class="eyebrow">QUIZ ATTEMPT · ${escapeHtml(state.group)} GROUP</span><h1>${escapeHtml(state.quiz.name)}</h1><p>${escapeHtml(state.quiz.subject)} · ${escapeHtml(state.quiz.chapter)}</p></div><div class="attempt-clock"><span>TIME TAKEN</span><b>${formatTime(elapsed)}</b></div></div><div class="attempt-progress"><span>QUESTION ${state.questionIndex + 1} OF ${questions.length}</span><div><i style="width:${((state.questionIndex + 1) / questions.length) * 100}%"></i></div><span>${marksLabel}</span></div><div class="attempt-layout"><article class="question-card"><div class="question-label">QUESTION ${String(state.questionIndex + 1).padStart(2, "0")} <span>·</span> ${escapeHtml(question.difficulty || "PRACTICE")}</div><h2 class="question-prompt">${escapeHtml(question.text)}</h2>${diagram}<div class="answer-options">${options}</div><div class="question-controls"><button type="button" class="secondary-action" data-previous ${state.questionIndex === 0 ? "disabled" : ""}>← Previous</button>${state.questionIndex < questions.length - 1 ? `<button type="button" class="primary-action" data-next>Next question →</button>` : `<button type="button" class="primary-action" data-submit-quiz>Submit quiz</button>`}</div></article><aside class="question-sidebar"><b>QUESTION PALETTE</b><p>${answeredCount} of ${questions.length} answered. Unanswered questions remain unmarked.</p><div class="question-palette-list">${palette}</div><div class="palette-legend"><span></span> Answered</div></aside></div></section>`;
+    const backTarget = state.quiz.levelId ? "subject" : "quizzes";
+    const backLabel = state.quiz.levelId ? "Back to Mathematics PYQ quizzes" : "Back to practice sets";
+    const content = `<section class="page-content quiz-taking"><button class="back-link" data-nav="${backTarget}">← <span>${backLabel}</span></button><div class="attempt-heading"><div><span class="eyebrow">QUIZ ATTEMPT · ${escapeHtml(state.group)} GROUP</span><h1>${escapeHtml(state.quiz.name)}</h1><p>${escapeHtml(state.quiz.subject)} · ${escapeHtml(state.quiz.chapter)}</p></div><div class="attempt-clock"><span>TIME TAKEN</span><b>${formatTime(elapsed)}</b></div></div><div class="attempt-progress"><span>QUESTION ${state.questionIndex + 1} OF ${questions.length}</span><div><i style="width:${((state.questionIndex + 1) / questions.length) * 100}%"></i></div><span>${marksLabel}</span></div><div class="attempt-layout"><article class="question-card"><div class="question-label">QUESTION ${String(state.questionIndex + 1).padStart(2, "0")} <span>·</span> ${escapeHtml(question.difficulty || "PRACTICE")}</div><h2 class="question-prompt">${escapeHtml(question.text)}</h2>${diagram}<div class="answer-options">${options}</div><div class="question-controls"><button type="button" class="secondary-action" data-previous ${state.questionIndex === 0 ? "disabled" : ""}>← Previous</button>${state.questionIndex < questions.length - 1 ? `<button type="button" class="primary-action" data-next>Next question →</button>` : `<button type="button" class="primary-action" data-submit-quiz>Submit quiz</button>`}</div></article><aside class="question-sidebar"><b>QUESTION PALETTE</b><p>${answeredCount} of ${questions.length} answered. Unanswered questions remain unmarked.</p><div class="question-palette-list">${palette}</div><div class="palette-legend"><span></span> Answered</div></aside></div></section>`;
     return shell(content, "quiz");
   }
 
@@ -151,7 +157,7 @@
       const status = !answered ? "Unattempted" : manualReview ? "Response recorded" : correct ? "Correct" : "Incorrect";
       const yourAnswer = !answered ? "Not answered" : manualReview ? answer : Array.isArray(question.options) ? question.options[answer] : answer;
       const expectedAnswer = Array.isArray(question.options) ? question.options[question.answer] : question.answer;
-      return `<article class="review-question ${!answered ? "unanswered" : manualReview ? "manual-review" : correct ? "correct" : "incorrect"}"><div class="review-question-head"><b>Question ${index + 1}</b><span class="review-status">${status}</span></div><h3>${escapeHtml(question.text)}</h3>${question.diagram ? `<figure class="question-diagram"><img src="${escapeHtml(question.diagram)}" alt="Truss diagram for question ${index + 1}" /><figcaption>Question ${index + 1} diagram</figcaption></figure>` : ""}<div class="review-answer-row"><span>Your answer</span><b>${escapeHtml(yourAnswer)}</b></div><div class="review-answer-row correct-answer"><span>${manualReview ? "Verified answer" : "Correct answer"}</span><b>${escapeHtml(expectedAnswer)}</b></div><p class="review-explanation">${escapeHtml(question.explanation || "No explanation was provided for this question.")}</p></article>`;
+      return `<article class="review-question ${!answered ? "unanswered" : manualReview ? "manual-review" : correct ? "correct" : "incorrect"}"><div class="review-question-head"><b>Question ${index + 1}</b><span class="review-status">${status}</span></div><h3>${escapeHtml(question.text)}</h3>${question.diagram ? `<figure class="question-diagram"><img src="${escapeHtml(question.diagram)}" alt="Truss diagram for question ${index + 1}" /><figcaption>Question ${index + 1} diagram</figcaption></figure>` : ""}<div class="review-answer-row"><span>Your answer</span><b>${escapeHtml(yourAnswer)}</b></div><div class="review-answer-row correct-answer"><span>${manualReview ? "Verified answer" : "Correct answer"}</span><b>${escapeHtml(expectedAnswer)}</b></div><p class="review-explanation">${escapeHtml(question.explanation || "No explanation was provided for this question.")}</p>${question.sourcePaper ? `<small class="question-source">${escapeHtml(question.source || "Question source")}: ${escapeHtml(question.sourcePaper)}</small>` : ""}</article>`;
     }).join("")}</section>` : "";
     const scoreDisplay = result.percentage === null
       ? `<div class="score-ring unscored"><div><b>${result.attemptedQuestions}/${result.totalQuestions}</b><small>ANSWERED</small></div></div><div class="score-copy"><span>RESPONSE STATUS</span><strong>Self-review</strong><small>${escapeHtml(message)}</small></div>`
@@ -191,7 +197,8 @@
 
   function startQuiz() {
     const chapterQuiz = data.chapterQuizSets.find((quiz) => quiz.subjectId === state.subject && quiz.chapter === state.chapter);
-    const sourceQuiz = chapterQuiz || data.sampleQuiz;
+    const pyqQuiz = data.pyqQuizSets?.find((quiz) => quiz.id === state.selectedPyqQuizId);
+    const sourceQuiz = pyqQuiz || chapterQuiz || data.sampleQuiz;
     state.quiz = { ...sourceQuiz, questions: sourceQuiz.questions.map((question) => ({ ...question, ...(question.options ? { options: [...question.options] } : {}) })) };
     state.answers = state.quiz.questions.map(() => null);
     state.questionIndex = 0;
@@ -269,14 +276,19 @@
     root.querySelector(".profile-menu-toggle")?.addEventListener("click", () => { state.profileMenuOpen = !state.profileMenuOpen; render(); });
     root.querySelectorAll("[data-logout]").forEach((button) => button.addEventListener("click", logout));
     root.querySelectorAll("[data-nav]").forEach((button) => button.addEventListener("click", () => { state.mobileMenuOpen = false; state.page = button.dataset.nav; render(); }));
+    root.querySelectorAll("[data-pyq-quiz]").forEach((button) => button.addEventListener("click", () => {
+      state.selectedPyqQuizId = button.dataset.pyqQuiz;
+      state.subject = "mathematics";
+      startQuiz();
+    }));
     root.querySelectorAll("[data-subject]").forEach((button) => button.addEventListener("click", () => { state.mobileMenuOpen = false; state.subject = button.dataset.subject; state.page = "subject"; render(); }));
-    root.querySelectorAll("[data-chapter]").forEach((button) => button.addEventListener("click", () => { state.mobileMenuOpen = false; state.chapter = button.dataset.chapter; state.page = "quizzes"; render(); }));
+    root.querySelectorAll("[data-chapter]").forEach((button) => button.addEventListener("click", () => { state.selectedPyqQuizId = null; state.mobileMenuOpen = false; state.chapter = button.dataset.chapter; state.page = "quizzes"; render(); }));
     root.querySelector("[data-scroll-subjects]")?.addEventListener("click", () => {
       state.mobileMenuOpen = false;
       render();
       root.querySelector("#subjects")?.scrollIntoView({ behavior: "smooth" });
     });
-    root.querySelector("[data-start-quiz]")?.addEventListener("click", startQuiz);
+    root.querySelector("[data-start-quiz]")?.addEventListener("click", () => { state.selectedPyqQuizId = null; startQuiz(); });
     root.querySelector("[data-text-answer]")?.addEventListener("input", (event) => {
       state.answers[state.questionIndex] = event.currentTarget.value.trim() ? event.currentTarget.value : null;
       const paletteButton = root.querySelector(`[data-question-index="${state.questionIndex}"]`);
