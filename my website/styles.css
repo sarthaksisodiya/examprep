@@ -162,3 +162,5 @@ html[data-theme="dark"] .question-source{color:#a0a9bd}
 .future-exam-slots .quiz-index{flex:none}
 @media(max-width:640px){.future-exam-grid{grid-template-columns:1fr}}
 html[data-theme="dark"] .future-exam-group>h3{color:#edf0fa}
+.question-prompt math.inline-fraction,.review-question math.inline-fraction{font-size:1.08em;vertical-align:middle;white-space:nowrap}
+.question-prompt math.inline-fraction mtext,.review-question math.inline-fraction mtext{font-family:var(--font)}
