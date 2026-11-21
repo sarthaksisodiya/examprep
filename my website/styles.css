@@ -149,3 +149,16 @@ html[data-theme="dark"] .question-source{color:#a0a9bd}
 .review-question.manual-review{border-left-color:#8b82d4}
 .review-question.manual-review .review-status{color:#7066bf}
 .score-ring.unscored{background:conic-gradient(#bfb4ff 100%,rgba(255,255,255,.16) 0)}
+
+.brand-mark.brand-icon{display:block;object-fit:cover;background:transparent;border-radius:10px}
+
+.future-exams-heading{margin-top:26px!important}
+.future-exam-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:14px}
+.future-exam-group>h3{font:700 13px var(--display);margin:0 0 9px}
+.future-exam-slots{display:grid;gap:9px}
+.future-exam-slots .quiz-card{min-width:0;padding:12px;min-height:72px}
+.future-exam-slots .quiz-info h3{font-size:12px}
+.future-exam-slots .quiz-info p{font-size:10px}
+.future-exam-slots .quiz-index{flex:none}
+@media(max-width:640px){.future-exam-grid{grid-template-columns:1fr}}
+html[data-theme="dark"] .future-exam-group>h3{color:#edf0fa}
