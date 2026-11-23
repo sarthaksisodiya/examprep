@@ -15,6 +15,7 @@
     subject: null,
     chapter: null,
     selectedPyqQuizId: null,
+    selectedChapterQuizId: null,
     quiz: null,
     answers: [],
     questionIndex: 0,
@@ -121,7 +122,7 @@
       : `<div class="chapter-list">${subject.chapters.map((chapter, i) => `<button class="chapter-row" data-chapter="${escapeHtml(chapter)}"><span class="chapter-number">${String(i + 1).padStart(2, "0")}</span><span class="chapter-name"><b>${escapeHtml(chapter)}</b><small>4 practice sets · ~10 questions each</small></span><span class="chapter-progress"><span class="progress-track"><span style="width:0%"></span></span><small>Not started</small></span><span class="chapter-arrow">→</span></button>`).join("")}</div>`;
     const quizCard = (quiz, index) => `<article class="quiz-card pyq-quiz-card"><span class="quiz-index">${String(index+1).padStart(2,"0")}</span><div class="quiz-info"><span class="level-pill violet">${escapeHtml(quiz.level)} · ${escapeHtml(quiz.difficulty)}</span><h3>${escapeHtml(quiz.name)}</h3><p>${quiz.questions.length} questions · ${escapeHtml(quiz.duration)} · ${quiz.questions.reduce((sum,q)=>sum+q.marks,0)} marks</p></div><button class="quiz-launch ready" type="button" data-pyq-quiz="${escapeHtml(quiz.id)}">Start mock <span>→</span></button></article>`;
     const pyqQuizzes = subject.id === "mathematics" && state.group === "MT"
-      ? `<section class="pyq-section"><div class="section-heading compact"><div><span class="eyebrow">MATHEMATICS-I · MC 1101</span><h2>Mini mock tests</h2><p>Five questions · 60 minutes · 10 marks each.</p></div><span class="group-chip">2 MOCKS</span></div><div class="quiz-list pyq-quiz-list">${data.pyqQuizSets.filter((quiz)=>quiz.category==="mini").map(quizCard).join("")}</div><div class="sample-notice pyq-source-note"><span>ⓘ</span><span>Questions and solutions supplied for this site.</span></div><div class="section-heading compact future-exams-heading"><div><span class="eyebrow">MATHEMATICS-I · MC 1101</span><h2>Mid-semester mocks</h2><p>Eight questions · 60 minutes · 20 marks each.</p></div><span class="group-chip">2 MOCKS</span></div><div class="quiz-list pyq-quiz-list">${data.pyqQuizSets.filter((quiz)=>quiz.category==="mid").map(quizCard).join("")}</div><div class="sample-notice pyq-source-note"><span>ⓘ</span><span>Objective versions based on your supplied questions and solutions.</span></div><div class="section-heading compact future-exams-heading"><div><span class="eyebrow">COMING LATER</span><h2>End-semester practice</h2><p>Reserved for the two End-Sem quizzes.</p></div></div><div class="future-exam-grid"><section class="future-exam-group"><div class="future-exam-slots">${[1,2].map((n) => `<article class="quiz-card"><span class="quiz-index">0${n}</span><div class="quiz-info"><h3>End-Sem Quiz ${n}</h3><p>Quiz slot reserved</p></div><span class="quiz-coming">Coming soon</span></article>`).join("")}</div></section></div></section>`
+      ? `<section class="pyq-section"><div class="section-heading compact"><div><span class="eyebrow">MATHEMATICS-I · MC 1101</span><h2>Mini mock tests</h2><p>Five questions · 60 minutes · 10 marks each.</p></div><span class="group-chip">2 MOCKS</span></div><div class="quiz-list pyq-quiz-list">${data.pyqQuizSets.filter((quiz)=>quiz.category==="mini").map(quizCard).join("")}</div><div class="sample-notice pyq-source-note"><span>ⓘ</span><span>Questions and solutions supplied for this site.</span></div><div class="section-heading compact future-exams-heading"><div><span class="eyebrow">MATHEMATICS-I · MC 1101</span><h2>Mid-semester mocks</h2><p>Eight questions · 60 minutes · 20 marks each.</p></div><span class="group-chip">2 MOCKS</span></div><div class="quiz-list pyq-quiz-list">${data.pyqQuizSets.filter((quiz)=>quiz.category==="mid").map(quizCard).join("")}</div><div class="sample-notice pyq-source-note"><span>ⓘ</span><span>Objective versions based on your supplied questions and solutions.</span></div><div class="section-heading compact future-exams-heading"><div><span class="eyebrow">MATHEMATICS-I · MC 1101</span><h2>End-semester mocks</h2><p>Ten questions · 2 hours · 40 marks each.</p></div><span class="group-chip">2 MOCKS</span></div><div class="quiz-list pyq-quiz-list">${data.pyqQuizSets.filter((quiz)=>quiz.category==="end").map(quizCard).join("")}</div></section>`
       : "";
     const content = `<section class="page-content"><button class="back-link" data-nav="dashboard">← <span>All subjects</span></button><div class="subject-intro"><span class="subject-icon large ${subject.color}">${subject.icon}</span><div><span class="eyebrow">${escapeHtml(state.group)} GROUP · SUBJECT</span><h1>${escapeHtml(subject.name)}</h1><p>${subject.direct ? "Explore topic-wise practice sets." : `${subject.chapters.length} chapters to explore at your own pace.`}</p></div></div><div class="section-heading compact"><div><span class="eyebrow">${subject.direct ? "GET STARTED" : "COURSE CONTENT"}</span><h2>${subject.direct ? "Topic practice" : "Chapters"}</h2></div>${!subject.direct ? `<span class="group-chip">${subject.chapters.length} CHAPTERS</span>` : ""}</div>${body}${pyqQuizzes}<div class="coming-strip"><span class="strip-icon">✦</span><span><b>More practice is coming soon.</b><small>Question sets are being prepared for this subject.</small></span><span class="strip-badge">IN THE WORKS</span></div></section>`;
     return shell(content, "subject");
@@ -130,16 +131,29 @@
   function quizPage() {
     const subject = selectedSubject();
     if (!subject) { state.page = "dashboard"; return dashboardPage(); }
-    const chapterQuizSet = data.chapterQuizSets.find((quiz) => quiz.subjectId === subject.id && quiz.chapter === state.chapter);
-    const quizzes = chapterQuizSet
-      ? `<article class="quiz-card"><span class="quiz-index">01</span><div class="quiz-info"><span class="level-pill violet">PRACTICE</span><h3>${escapeHtml(chapterQuizSet.name)}</h3><p>${escapeHtml(chapterQuizSet.subtitle)}</p></div><button class="quiz-launch ready" data-start-quiz>Start quiz <span>→</span></button></article>`
-      : data.quizSets.map((quiz, index) => {
-        const isSampleAvailable = state.group === "MT" && subject.id === "mathematics" && state.chapter === data.sampleQuiz.chapter && index === 0;
-        return `<article class="quiz-card"><span class="quiz-index">${String(index + 1).padStart(2, "0")}</span><div class="quiz-info"><span class="level-pill ${quiz.color}">${quiz.level}</span><h3>${escapeHtml(quiz.name)}</h3><p>${isSampleAvailable ? `${data.sampleQuiz.questions.length} questions · Sample questions` : `${quiz.count} questions · ${quiz.duration} · In preparation`}</p></div>${isSampleAvailable ? `<button class="quiz-launch ready" data-start-quiz>Start sample quiz <span>→</span></button>` : `<span class="quiz-coming">Coming soon</span>`}</article>`;
-      }).join("");
-    const notice = chapterQuizSet
-      ? `<div class="sample-notice"><span>ⓘ</span><span><b>Objective quiz · 10 questions.</b> Choose one option per question; your score is graded automatically.</span></div>`
-      : `<div class="sample-notice"><span>ⓘ</span><span><b>The available set is clearly labeled as a sample.</b> Other quizzes will appear here when question sets are ready.</span></div>`;
+    const chapterQuizSets = data.chapterQuizSets.filter((quiz) => quiz.subjectId === subject.id && quiz.chapter === state.chapter);
+    const isSequenceChapter = subject.id === "mathematics" && state.chapter === "Sequence and Series";
+    const sequenceLevels = ["basic", "moderate", "advanced", "mixed"];
+    const quizzes = isSequenceChapter
+      ? data.quizSets.map((quiz, index) => {
+          const chapterQuiz = chapterQuizSets.find((item) => item.levelId === sequenceLevels[index]);
+          const isSample = index === 0 && state.group === "MT";
+          const questionCount = chapterQuiz ? chapterQuiz.questions.length : isSample ? data.sampleQuiz.questions.length : quiz.count;
+          const launchButton = chapterQuiz
+            ? `<button class="quiz-launch ready" data-start-chapter-quiz="${escapeHtml(chapterQuiz.id)}">Start quiz <span>→</span></button>`
+            : isSample
+              ? `<button class="quiz-launch ready" data-start-quiz>Start sample quiz <span>→</span></button>`
+              : `<span class="quiz-coming">Coming soon</span>`;
+          return `<article class="quiz-card"><span class="quiz-index">${String(index + 1).padStart(2, "0")}</span><div class="quiz-info"><span class="level-pill ${quiz.color}">${escapeHtml(quiz.level)}</span><h3>${escapeHtml(quiz.name)}</h3><p>${questionCount} questions · ${chapterQuiz ? escapeHtml(chapterQuiz.duration) : quiz.duration} · ${chapterQuiz ? "Practice set" : isSample ? "Sample questions" : "In preparation"}</p></div>${launchButton}</article>`;
+        }).join("")
+      : chapterQuizSets.length
+        ? chapterQuizSets.map((quiz, index) => `<article class="quiz-card"><span class="quiz-index">${String(index + 1).padStart(2, "0")}</span><div class="quiz-info"><span class="level-pill violet">PRACTICE</span><h3>${escapeHtml(quiz.name)}</h3><p>${escapeHtml(quiz.subtitle)}</p></div><button class="quiz-launch ready" data-start-chapter-quiz="${escapeHtml(quiz.id)}">Start quiz <span>→</span></button></article>`).join("")
+        : data.quizSets.map((quiz, index) => `<article class="quiz-card"><span class="quiz-index">${String(index + 1).padStart(2, "0")}</span><div class="quiz-info"><span class="level-pill ${quiz.color}">${escapeHtml(quiz.level)}</span><h3>${escapeHtml(quiz.name)}</h3><p>${quiz.count} questions · ${quiz.duration} · In preparation</p></div><span class="quiz-coming">Coming soon</span></article>`).join("");
+    const notice = isSequenceChapter
+      ? `<div class="sample-notice"><span>ⓘ</span><span><b>Moderate, advanced and mixed practice sets are ready.</b> Basic Concepts remains clearly labeled as a sample quiz.</span></div>`
+      : chapterQuizSets.length
+        ? `<div class="sample-notice"><span>ⓘ</span><span><b>Objective quiz.</b> Your score is graded automatically.</span></div>`
+        : `<div class="sample-notice"><span>ⓘ</span><span><b>The available set is clearly labeled as a sample.</b> Other quizzes will appear here when question sets are ready.</span></div>`;
     const content = `<section class="page-content"><button class="back-link" data-nav="subject">← <span>${escapeHtml(subject.name)}</span></button><div class="quiz-intro"><span class="eyebrow">${escapeHtml(subject.name.toUpperCase())} · CHAPTER PRACTICE</span><h1>${escapeHtml(state.chapter)}</h1><p>Choose a practice set. Each one is designed to help you build confidence step by step.</p></div><div class="quiz-list">${quizzes}</div>${notice}</section>`;
     return shell(content, "subject");
   }
@@ -216,7 +230,7 @@
   }
 
   function startQuiz() {
-    const chapterQuiz = data.chapterQuizSets.find((quiz) => quiz.subjectId === state.subject && quiz.chapter === state.chapter);
+    const chapterQuiz = data.chapterQuizSets.find((quiz) => quiz.id === state.selectedChapterQuizId) || data.chapterQuizSets.find((quiz) => quiz.subjectId === state.subject && quiz.chapter === state.chapter);
     const pyqQuiz = data.pyqQuizSets?.find((quiz) => quiz.id === state.selectedPyqQuizId);
     const sourceQuiz = pyqQuiz || chapterQuiz || data.sampleQuiz;
     state.quiz = { ...sourceQuiz, questions: sourceQuiz.questions.map((question) => ({ ...question, ...(question.options ? { options: [...question.options] } : {}) })) };
@@ -297,19 +311,20 @@
     root.querySelectorAll("[data-logout]").forEach((button) => button.addEventListener("click", logout));
     root.querySelectorAll("[data-nav]").forEach((button) => button.addEventListener("click", () => { state.mobileMenuOpen = false; state.page = button.dataset.nav; render(); }));
     root.querySelectorAll("[data-pyq-quiz]").forEach((button) => button.addEventListener("click", () => {
-      state.selectedPyqQuizId = button.dataset.pyqQuiz;
+      state.selectedChapterQuizId = null; state.selectedPyqQuizId = button.dataset.pyqQuiz;
       state.subject = "mathematics";
       state.chapter = data.pyqQuizSets.find((quiz) => quiz.id === state.selectedPyqQuizId)?.chapter || "Mathematics-I Mini Mock";
       startQuiz();
     }));
     root.querySelectorAll("[data-subject]").forEach((button) => button.addEventListener("click", () => { state.mobileMenuOpen = false; state.subject = button.dataset.subject; state.page = "subject"; render(); }));
-    root.querySelectorAll("[data-chapter]").forEach((button) => button.addEventListener("click", () => { state.selectedPyqQuizId = null; state.mobileMenuOpen = false; state.chapter = button.dataset.chapter; state.page = "quizzes"; render(); }));
+    root.querySelectorAll("[data-chapter]").forEach((button) => button.addEventListener("click", () => { state.selectedPyqQuizId = null; state.selectedChapterQuizId = null; state.mobileMenuOpen = false; state.chapter = button.dataset.chapter; state.page = "quizzes"; render(); }));
     root.querySelector("[data-scroll-subjects]")?.addEventListener("click", () => {
       state.mobileMenuOpen = false;
       render();
       root.querySelector("#subjects")?.scrollIntoView({ behavior: "smooth" });
     });
-    root.querySelector("[data-start-quiz]")?.addEventListener("click", () => { state.selectedPyqQuizId = null; startQuiz(); });
+    root.querySelectorAll("[data-start-chapter-quiz]").forEach((button) => button.addEventListener("click", () => { state.selectedPyqQuizId = null; state.selectedChapterQuizId = button.dataset.startChapterQuiz; startQuiz(); }));
+    root.querySelector("[data-start-quiz]")?.addEventListener("click", () => { state.selectedPyqQuizId = null; state.selectedChapterQuizId = null; startQuiz(); });
     root.querySelector("[data-text-answer]")?.addEventListener("input", (event) => {
       state.answers[state.questionIndex] = event.currentTarget.value.trim() ? event.currentTarget.value : null;
       const paletteButton = root.querySelector(`[data-question-index="${state.questionIndex}"]`);
