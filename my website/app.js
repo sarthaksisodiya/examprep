@@ -133,8 +133,9 @@
     if (!subject) { state.page = "dashboard"; return dashboardPage(); }
     const chapterQuizSets = data.chapterQuizSets.filter((quiz) => quiz.subjectId === subject.id && quiz.chapter === state.chapter);
     const isSequenceChapter = subject.id === "mathematics" && state.chapter === "Sequence and Series";
+    const usesLevelCards = isSequenceChapter || chapterQuizSets.some((quiz) => quiz.levelId);
     const sequenceLevels = ["basic", "moderate", "advanced", "mixed"];
-    const quizzes = isSequenceChapter
+    const quizzes = usesLevelCards
       ? data.quizSets.map((quiz, index) => {
           const chapterQuiz = chapterQuizSets.find((item) => item.levelId === sequenceLevels[index]);
           const isSample = index === 0 && state.group === "MT";
@@ -149,8 +150,10 @@
       : chapterQuizSets.length
         ? chapterQuizSets.map((quiz, index) => `<article class="quiz-card"><span class="quiz-index">${String(index + 1).padStart(2, "0")}</span><div class="quiz-info"><span class="level-pill violet">PRACTICE</span><h3>${escapeHtml(quiz.name)}</h3><p>${escapeHtml(quiz.subtitle)}</p></div><button class="quiz-launch ready" data-start-chapter-quiz="${escapeHtml(quiz.id)}">Start quiz <span>→</span></button></article>`).join("")
         : data.quizSets.map((quiz, index) => `<article class="quiz-card"><span class="quiz-index">${String(index + 1).padStart(2, "0")}</span><div class="quiz-info"><span class="level-pill ${quiz.color}">${escapeHtml(quiz.level)}</span><h3>${escapeHtml(quiz.name)}</h3><p>${quiz.count} questions · ${quiz.duration} · In preparation</p></div><span class="quiz-coming">Coming soon</span></article>`).join("");
-    const notice = isSequenceChapter
-      ? `<div class="sample-notice"><span>ⓘ</span><span><b>Moderate, advanced and mixed practice sets are ready.</b> Basic Concepts remains clearly labeled as a sample quiz.</span></div>`
+    const notice = usesLevelCards
+      ? (isSequenceChapter
+        ? `<div class="sample-notice"><span>ⓘ</span><span><b>Moderate, advanced and mixed practice sets are ready.</b> Basic Concepts remains clearly labeled as a sample quiz.</span></div>`
+        : `<div class="sample-notice"><span>ⓘ</span><span><b>Three practice sets are ready.</b> The Basic Concepts set will be added later.</span></div>`)
       : chapterQuizSets.length
         ? `<div class="sample-notice"><span>ⓘ</span><span><b>Objective quiz.</b> Your score is graded automatically.</span></div>`
         : `<div class="sample-notice"><span>ⓘ</span><span><b>The available set is clearly labeled as a sample.</b> Other quizzes will appear here when question sets are ready.</span></div>`;
