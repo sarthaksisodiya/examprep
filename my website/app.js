@@ -29,22 +29,94 @@
   };
 
   const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
-  function formatQuestionText(value) {
-    const text = String(value ?? "");
-    const fractionPattern = /\[\[frac:([^|]+)\|([^\]]+)\]\]/g;
-    let html = "";
-    let offset = 0;
-    let match;
-    while ((match = fractionPattern.exec(text))) {
-      html += escapeHtml(text.slice(offset, match.index));
-      const numerator = escapeHtml(match[1]);
-      const denominator = escapeHtml(match[2]);
-      html += `<math class="inline-fraction" display="inline" aria-label="${numerator} over ${denominator}"><mfrac><mrow><mtext>${numerator}</mtext></mrow><mrow><mtext>${denominator}</mtext></mrow></mfrac></math>`;
-      offset = fractionPattern.lastIndex;
-    }
-    return html + escapeHtml(text.slice(offset));
+  const mathCharacters = {
+    "∫": "\\int", "∬": "\\iint", "∭": "\\iiint", "∮": "\\oint", "∑": "\\sum", "Σ": "\\Sigma",
+    "∇": "\\nabla", "∂": "\\partial", "√": "\\sqrt", "φ": "\\phi", "θ": "\\theta", "π": "\\pi",
+    "ρ": "\\rho", "σ": "\\sigma", "α": "\\alpha", "β": "\\beta", "γ": "\\gamma", "λ": "\\lambda",
+    "μ": "\\mu", "ω": "\\omega", "Γ": "\\Gamma", "Δ": "\\Delta", "∞": "\\infty", "≤": "\\le", "≥": "\\ge", "≠": "\\ne",
+    "≈": "\\approx", "∼": "\\sim", "→": "\\to", "×": "\\times", "·": "\\cdot", "÷": "\\div", "°": "^{\\circ}", "½": "\\frac{1}{2}", "′": "^{\\prime}", "″": "^{\\prime\\prime}", "‴": "^{\\prime\\prime\\prime}", "−": "-", "⁻": "-"
+  };
+  const superscriptCharacters = { "⁰": "0", "¹": "1", "²": "2", "³": "3", "⁴": "4", "⁵": "5", "⁶": "6", "⁷": "7", "⁸": "8", "⁹": "9", "ⁿ": "n", "ⁱ": "i", "ˣ": "x", "ᵖ": "p", "ʸ": "y", "ᵃ": "a", "⁺": "+", "⁻": "-", "⁽": "(", "⁾": ")" };
+  const subscriptCharacters = { "₀": "0", "₁": "1", "₂": "2", "₃": "3", "₄": "4", "₅": "5", "₆": "6", "₇": "7", "₈": "8", "₉": "9", "ₙ": "n", "ₓ": "x", "ᵧ": "y", "₌": "=", "₊": "+", "₋": "-", "₍": "(", "₎": ")" };
+  const mathWords = new Set(["sin", "cos", "tan", "sec", "csc", "cot", "ln", "log", "lim", "max", "min", "div", "curl", "grad", "rot", "det", "dx", "dy", "dz", "dA", "dV", "dS"]);
+
+  function toMathTex(value) {
+    let tex = String(value ?? "")
+      .replace(/\[\[frac:([^|]+)\|([^\]]+)\]\]/g, (_, numerator, denominator) => `\\frac{${numerator}}{${denominator}}`)
+      .replace(/e\^\(([^()]*)\)/g, (_, exponent) => `e^{${exponent}}`)
+      .replace(/([⁰¹²³⁴⁵⁶⁷⁸⁹ⁿⁱˣᵖʸᵃ⁺⁻⁽⁾]+)/g, (superscript) => `^{${[...superscript].map((char) => superscriptCharacters[char] ?? char).join("")}}`)
+      .replace(/([₀₁₂₃₄₅₆₇₈₉ₙₓᵧ₌₊₋₍₎]+)/g, (subscript) => `_{${[...subscript].map((char) => subscriptCharacters[char] ?? char).join("")}}`);
+
+    tex = tex.replace(/√\(([^()]*)\)/g, "\\sqrt{$1}").replace(/√([A-Za-z0-9]+)/g, "\\sqrt{$1}");
+    tex = tex.replace(/∂\s*([A-Za-z])\s*\/\s*∂\s*([A-Za-z])/g, "\\frac{\\partial $1}{\\partial $2}")
+      .replace(/d\s*([A-Za-z])\s*\/\s*d\s*([A-Za-z])/g, "\\frac{d$1}{d$2}")
+      .replace(/(?<![A-Za-z])d([xyzrAVSθφ])/g, "\\,\\mathrm{d}$1");
+    tex = tex.replace(/\b(sin|cos|tan|sec|csc|cot|ln|log|lim|max|min)\b/g, "\\$1");
+    tex = tex.replace(/[∫∬∭∮∑Σ∇∂√φθπρσαβγλμωΓΔ∞≤≥≠≈∼→×·÷°½′″‴−⁻]/g, (character) => mathCharacters[character] ?? character);
+    tex = tex.replace(/\(([^()]*)\)\/\(([^()]*)\)/g, "\\frac{$1}{$2}")
+      .replace(/(?<![A-Za-z\\])([A-Za-z0-9]+)\/\(([^()]*)\)/g, "\\frac{$1}{$2}")
+      .replace(/(?<![A-Za-z\\])([A-Za-z0-9]+|\\sqrt\{[^{}]+\})\/([A-Za-z0-9]+|\\sqrt\{[^{}]+\})/g, "\\frac{$1}{$2}")
+      .replace(/(?<![A-Za-z\\])([A-Za-z]+\^\{[^{}]+\}|\([^()]+\))\/([A-Za-z0-9]+|\([^()]+\))/g, "\\frac{$1}{$2}");
+    return tex;
   }
 
+  function isMathOnly(text) {
+    if (!/[=\/∫∬∭∮∑Σ∇∂√°½^′″‴₀₁₂₃₄₅₆₇₈₉ₙₓᵧ₌₊₋⁰¹²³⁴⁵⁶⁷⁸⁹ⁿⁱˣᵖʸᵃ⁺⁻]|\[\[frac:/.test(text)) return false;
+    const words = text.match(/[A-Za-z]{2,}/g) || [];
+    return words.every((word) => mathWords.has(word));
+  }
+
+  function formatQuestionText(value) {
+    const text = String(value ?? "");
+    const mathSpan = (expression, rawTex = false, display = false) => {
+      const tex = escapeHtml(rawTex ? expression : toMathTex(expression));
+      return `<span class="math-scroll${display ? " math-scroll-display" : ""}">${display ? `\\[${tex}\\]` : `\\(\\displaystyle ${tex} \\)`}</span>`;
+    };
+    const explicitMath = /\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]|\$\$[\s\S]*?\$\$|\$[^$\n]+\$/;
+    const rawLatex = /\\(?:int|iint|iiint|oint|frac|sqrt|sum|prod|lim|partial|nabla|begin|alpha|beta|gamma|theta|phi|pi|cdot|times|log|sin|cos|tan)\b/;
+    if (!explicitMath.test(text) && rawLatex.test(text)) {
+      const plainWords = text.replace(/\\[A-Za-z]+/g, " ").match(/[A-Za-z]{2,}/g) || [];
+      if (plainWords.every((word) => mathWords.has(word))) return mathSpan(text, true);
+    }
+    if (!explicitMath.test(text) && isMathOnly(text)) return mathSpan(text);
+
+    const matches = [];
+    const addMatches = (pattern, group = 0) => {
+      for (const match of text.matchAll(pattern)) {
+        const expression = match[group] ?? match[0];
+        const offset = match.index + (match[0].indexOf(expression));
+        matches.push({ start: offset, end: offset + expression.length, expression });
+      }
+    };
+    addMatches(/\[\[frac:[^|]+\|[^\]]+\]\]/g);
+    addMatches(/(?:∫|∬|∭|∮)[^.!?;\n]*d[A-Za-zθφ](?:\s*d[A-Za-zθφ])*(?:\s*=\s*[^,.;!?]+)?/g);
+    addMatches(/(?:∫|∬|∭|∮)[^.!?;\n]*=[^.!?;\n]*/g);
+    addMatches(/(?:dy\/dx|dx\/dy|d[xyz]\/d[xyz])\s*(?:=\s*[^,.;!?]+?(?=\s+(?:is|are|where|and)\b|[,.;!?]|$))?/g);
+    addMatches(/(?:(?<![A-Za-z])d[A-Za-zθφ]|(?<![A-Za-z])[A-Za-zφθρσ]|[∇∂][A-Za-zφθρσ]?)\s*=\s*[^,.;!?]+/g);
+    if (!text.includes("[[frac:")) addMatches(/(?:Σ|∑)\s*[^,.;?]*(?=\s+(?:is|are|and|by|with|if|converges|diverges|the)\b|[,.;?]|$)/g);
+    addMatches(/(?:div|curl|grad|rot)\s+[^,.;!?]*?=[^,.;!?]+/g);
+    addMatches(/(?:\([^()]+\)|[A-Za-z0-9]+)\/(?:\([^()]+\)|[A-Za-z0-9]+)/g);
+    addMatches(/e(?:\^\([^)]*\)|[⁰¹²³⁴⁵⁶⁷⁸⁹ⁿⁱˣᵖ⁺⁻⁽⁾]+)/g);
+    addMatches(/\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]|\$\$[\s\S]*?\$\$|\$[^$\n]+\$/g);
+
+    if (!matches.length) return escapeHtml(text);
+    matches.sort((left, right) => left.start - right.start || right.end - left.end);
+    const output = [];
+    let cursor = 0;
+    for (const item of matches) {
+      if (item.start < cursor) continue;
+      output.push(escapeHtml(text.slice(cursor, item.start)));
+      const explicitTex = item.expression.startsWith("\\(") || item.expression.startsWith("\\[") || item.expression.startsWith("$");
+      const displayTex = item.expression.startsWith("\\[") || item.expression.startsWith("$$");
+      const expression = explicitTex
+        ? item.expression.replace(/^\\\(/, "").replace(/\\\)$/, "").replace(/^\\\[/, "").replace(/\\\]$/, "").replace(/^\$\$/, "").replace(/\$\$$/, "").replace(/^\$/, "").replace(/\$$/, "")
+        : item.expression;
+      output.push(mathSpan(expression, explicitTex, displayTex));
+      cursor = item.end;
+    }
+    output.push(escapeHtml(text.slice(cursor)));
+    return output.join("");
+  }
   const selectedSubject = () => data.subjects.find((item) => item.id === state.subject);
   const hasAnswer = (answer) => typeof answer === "string" ? answer.trim().length > 0 : answer !== null && answer !== undefined;
   const getResults = () => {
@@ -61,6 +133,7 @@
       window.clearInterval(state.timerId);
       state.timerId = null;
     }
+    window.MathJax?.typesetClear?.([root]);
     document.documentElement.dataset.theme = state.theme;
     document.body.classList.toggle("nav-open", state.mobileMenuOpen);
     if (state.page === "welcome") root.innerHTML = welcomePage();
@@ -69,6 +142,7 @@
     if (state.page === "quizzes") root.innerHTML = quizPage();
     if (state.page === "quiz") root.innerHTML = activeQuizPage();
     if (state.page === "result") root.innerHTML = resultPage();
+    if (window.MathJax?.typesetPromise) window.MathJax.typesetPromise([root]).catch(() => {});
     bindEvents();
     if (state.page === "quiz") {
       updateAttemptClock();
@@ -138,7 +212,7 @@
     const quizzes = usesLevelCards
       ? data.quizSets.map((quiz, index) => {
           const chapterQuiz = chapterQuizSets.find((item) => item.levelId === sequenceLevels[index]);
-          const isSample = index === 0 && state.group === "MT";
+          const isSample = isSequenceChapter && index === 0 && state.group === "MT";
           const questionCount = chapterQuiz ? chapterQuiz.questions.length : isSample ? data.sampleQuiz.questions.length : quiz.count;
           const launchButton = chapterQuiz
             ? `<button class="quiz-launch ready" data-start-chapter-quiz="${escapeHtml(chapterQuiz.id)}">Start quiz <span>→</span></button>`
@@ -153,7 +227,7 @@
     const notice = usesLevelCards
       ? (isSequenceChapter
         ? `<div class="sample-notice"><span>ⓘ</span><span><b>Moderate, advanced and mixed practice sets are ready.</b> Basic Concepts remains clearly labeled as a sample quiz.</span></div>`
-        : `<div class="sample-notice"><span>ⓘ</span><span><b>Three practice sets are ready.</b> The Basic Concepts set will be added later.</span></div>`)
+        : `<div class="sample-notice"><span>ⓘ</span><span>${chapterQuizSets.length === data.quizSets.length ? "All four difficulty levels are ready to attempt." : "Three practice sets are ready. The Basic Concepts set will be added later."}</span></div>`)
       : chapterQuizSets.length
         ? `<div class="sample-notice"><span>ⓘ</span><span><b>Objective quiz.</b> Your score is graded automatically.</span></div>`
         : `<div class="sample-notice"><span>ⓘ</span><span><b>The available set is clearly labeled as a sample.</b> Other quizzes will appear here when question sets are ready.</span></div>`;

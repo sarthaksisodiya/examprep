@@ -162,5 +162,10 @@ html[data-theme="dark"] .question-source{color:#a0a9bd}
 .future-exam-slots .quiz-index{flex:none}
 @media(max-width:640px){.future-exam-grid{grid-template-columns:1fr}}
 html[data-theme="dark"] .future-exam-group>h3{color:#edf0fa}
-.question-prompt math.inline-fraction,.review-question math.inline-fraction{font-size:1.08em;vertical-align:middle;white-space:nowrap}
-.question-prompt math.inline-fraction mtext,.review-question math.inline-fraction mtext{font-family:var(--font)}
+.math-scroll{display:inline-block;max-width:100%;overflow-x:auto;overflow-y:hidden;vertical-align:middle;padding:0 1px 3px;scrollbar-width:thin;scrollbar-color:#8c83d5 transparent}
+.math-scroll-display{display:block;text-align:center;margin:8px 0}
+.math-scroll mjx-container{margin:0 .04em!important;max-width:none;white-space:nowrap}
+.question-prompt .math-scroll,.review-question h3 .math-scroll{vertical-align:baseline}
+.answer-option .math-scroll{max-width:100%}
+.math-scroll::-webkit-scrollbar{height:3px}
+.math-scroll::-webkit-scrollbar-thumb{background:#8c83d5;border-radius:3px}
