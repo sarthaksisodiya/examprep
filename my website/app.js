@@ -33,17 +33,86 @@
     "∫": "\\int", "∬": "\\iint", "∭": "\\iiint", "∮": "\\oint", "∑": "\\sum", "Σ": "\\Sigma",
     "∇": "\\nabla", "∂": "\\partial", "√": "\\sqrt", "φ": "\\phi", "θ": "\\theta", "π": "\\pi",
     "ρ": "\\rho", "σ": "\\sigma", "α": "\\alpha", "β": "\\beta", "γ": "\\gamma", "λ": "\\lambda",
-    "μ": "\\mu", "ω": "\\omega", "Γ": "\\Gamma", "Δ": "\\Delta", "∞": "\\infty", "≤": "\\le", "≥": "\\ge", "≠": "\\ne",
+    "μ": "\\mu", "ω": "\\omega", "ψ": "\\psi", "κ": "\\kappa", "ħ": "\\hbar", "Γ": "\\Gamma", "Δ": "\\Delta", "∞": "\\infty", "≤": "\\le", "≥": "\\ge", "≠": "\\ne",
     "≈": "\\approx", "∼": "\\sim", "→": "\\to", "×": "\\times", "·": "\\cdot", "÷": "\\div", "°": "^{\\circ}", "½": "\\frac{1}{2}", "′": "^{\\prime}", "″": "^{\\prime\\prime}", "‴": "^{\\prime\\prime\\prime}", "−": "-", "⁻": "-"
   };
   const superscriptCharacters = { "⁰": "0", "¹": "1", "²": "2", "³": "3", "⁴": "4", "⁵": "5", "⁶": "6", "⁷": "7", "⁸": "8", "⁹": "9", "ⁿ": "n", "ⁱ": "i", "ˣ": "x", "ᵖ": "p", "ʸ": "y", "ᵃ": "a", "⁺": "+", "⁻": "-", "⁽": "(", "⁾": ")" };
   const subscriptCharacters = { "₀": "0", "₁": "1", "₂": "2", "₃": "3", "₄": "4", "₅": "5", "₆": "6", "₇": "7", "₈": "8", "₉": "9", "ₙ": "n", "ₓ": "x", "ᵧ": "y", "₌": "=", "₊": "+", "₋": "-", "₍": "(", "₎": ")" };
-  const mathWords = new Set(["sin", "cos", "tan", "sec", "csc", "cot", "ln", "log", "lim", "max", "min", "div", "curl", "grad", "rot", "det", "dx", "dy", "dz", "dA", "dV", "dS"]);
+  const mathWords = new Set(["sin", "cos", "tan", "sec", "csc", "cot", "ln", "log", "lim", "max", "min", "div", "curl", "grad", "rot", "det", "dx", "dy", "dz", "dA", "dV", "dS", "kT", "VT"]);
+
+  function convertParenthesizedExponents(value) {
+    const source = String(value ?? "");
+    const marker = /e\^\(/gi;
+    let result = "";
+    let cursor = 0;
+    let match;
+    while ((match = marker.exec(source))) {
+      let depth = 1;
+      let end = match.index + match[0].length;
+      for (; end < source.length && depth > 0; end += 1) {
+        if (source[end] === "(") depth += 1;
+        else if (source[end] === ")") depth -= 1;
+      }
+      if (depth !== 0) continue;
+      result += source.slice(cursor, match.index) + `e^{${source.slice(match.index + match[0].length, end - 1)}}`;
+      cursor = end;
+      marker.lastIndex = end;
+    }
+    return cursor ? result + source.slice(cursor) : source;
+  }
+
+  function convertGroupedFractions(value) {
+    const source = String(value ?? "");
+    let result = "";
+    let cursor = 0;
+    let search = 0;
+    while (true) {
+      const slash = source.indexOf("/(", search);
+      if (slash < 1) break;
+      let depth = 1;
+      let close = slash + 2;
+      for (; close < source.length && depth > 0; close += 1) {
+        if (source[close] === "(") depth += 1;
+        else if (source[close] === ")") depth -= 1;
+      }
+      if (depth !== 0) { search = slash + 1; continue; }
+
+      let start = slash - 1;
+      if (source[start] === ")" || source[start] === "}") {
+        const closing = source[start];
+        const opening = closing === ")" ? "(" : "{";
+        let nested = 1;
+        start -= 1;
+        for (; start >= 0 && nested > 0; start -= 1) {
+          if (source[start] === closing) nested += 1;
+          else if (source[start] === opening) nested -= 1;
+        }
+        if (nested !== 0) { search = slash + 1; continue; }
+        start += 1;
+        if (closing === "}") {
+          if (source[start - 1] === "^") start -= 1;
+          let tokenStart = start - 1;
+          while (tokenStart >= 0 && /[A-Za-z0-9]/.test(source[tokenStart])) tokenStart -= 1;
+          if (source[tokenStart] === "\\") start = tokenStart;
+          else if (tokenStart + 1 < start && /[A-Za-z0-9]/.test(source[tokenStart + 1])) start = tokenStart + 1;
+        }
+      } else {
+        while (start >= 0 && /[A-Za-z0-9]/.test(source[start])) start -= 1;
+        if (source[start] === "\\") start -= 1;
+        start += 1;
+      }
+      if (start < cursor || start >= slash) { search = slash + 1; continue; }
+      result += source.slice(cursor, start) + `\\frac{${source.slice(start, slash)}}{${source.slice(slash + 2, close - 1)}}`;
+      cursor = close;
+      search = close;
+    }
+    return cursor ? result + source.slice(cursor) : source;
+  }
 
   function toMathTex(value) {
     let tex = String(value ?? "")
-      .replace(/\[\[frac:([^|]+)\|([^\]]+)\]\]/g, (_, numerator, denominator) => `\\frac{${numerator}}{${denominator}}`)
-      .replace(/e\^\(([^()]*)\)/g, (_, exponent) => `e^{${exponent}}`)
+      .replace(/\[\[frac:([^|]+)\|([^\]]+)\]\]/g, (_, numerator, denominator) => `\\frac{${numerator}}{${denominator}}`);
+    tex = convertParenthesizedExponents(tex)
       .replace(/([⁰¹²³⁴⁵⁶⁷⁸⁹ⁿⁱˣᵖʸᵃ⁺⁻⁽⁾]+)/g, (superscript) => `^{${[...superscript].map((char) => superscriptCharacters[char] ?? char).join("")}}`)
       .replace(/([₀₁₂₃₄₅₆₇₈₉ₙₓᵧ₌₊₋₍₎]+)/g, (subscript) => `_{${[...subscript].map((char) => subscriptCharacters[char] ?? char).join("")}}`);
 
@@ -52,9 +121,11 @@
       .replace(/d\s*([A-Za-z])\s*\/\s*d\s*([A-Za-z])/g, "\\frac{d$1}{d$2}")
       .replace(/(?<![A-Za-z])d([xyzrAVSθφ])/g, "\\,\\mathrm{d}$1");
     tex = tex.replace(/\b(sin|cos|tan|sec|csc|cot|ln|log|lim|max|min)\b/g, "\\$1");
-    tex = tex.replace(/[∫∬∭∮∑Σ∇∂√φθπρσαβγλμωΓΔ∞≤≥≠≈∼→×·÷°½′″‴−⁻]/g, (character) => mathCharacters[character] ?? character);
+    tex = tex.replace(/[∫∬∭∮∑Σ∇∂√φθπρσαβγλμωψκħΓΔ∞≤≥≠≈∼→×·÷°½′″‴−⁻]/g, (character) => mathCharacters[character] ?? character);
+    tex = convertGroupedFractions(tex);
     tex = tex.replace(/\(([^()]*)\)\/\(([^()]*)\)/g, "\\frac{$1}{$2}")
       .replace(/(?<![A-Za-z\\])([A-Za-z0-9]+)\/\(([^()]*)\)/g, "\\frac{$1}{$2}")
+      .replace(/(\\[A-Za-z]+)\/(\\[A-Za-z]+)/g, "\\frac{$1}{$2}")
       .replace(/(?<![A-Za-z\\])([A-Za-z0-9]+|\\sqrt\{[^{}]+\})\/([A-Za-z0-9]+|\\sqrt\{[^{}]+\})/g, "\\frac{$1}{$2}")
       .replace(/(?<![A-Za-z\\])([A-Za-z]+\^\{[^{}]+\}|\([^()]+\))\/([A-Za-z0-9]+|\([^()]+\))/g, "\\frac{$1}{$2}");
     return tex;
@@ -247,8 +318,9 @@
     const diagram = question.diagram ? `<figure class="question-diagram"><img src="${escapeHtml(question.diagram)}" alt="Truss diagram for question ${state.questionIndex + 1}" /><figcaption>Question ${state.questionIndex + 1} diagram</figcaption></figure>` : "";
     const answeredCount = state.answers.filter(hasAnswer).length;
     const marksLabel = question.marks == null ? "PRACTICE" : `${question.marks} MARKS`;
-    const backTarget = state.quiz.levelId ? "subject" : "quizzes";
-    const backLabel = state.quiz.levelId ? "Back to Mathematics PYQ quizzes" : "Back to practice sets";
+    const isPyqQuiz = Boolean(state.selectedPyqQuizId);
+    const backTarget = isPyqQuiz ? "subject" : "quizzes";
+    const backLabel = isPyqQuiz ? "Back to exam mocks" : "Back to practice sets";
     const content = `<section class="page-content quiz-taking"><button class="back-link" data-nav="${backTarget}">← <span>${backLabel}</span></button><div class="attempt-heading"><div><span class="eyebrow">QUIZ ATTEMPT · ${escapeHtml(state.group)} GROUP</span><h1>${escapeHtml(state.quiz.name)}</h1><p>${escapeHtml(state.quiz.subject)} · ${escapeHtml(state.quiz.chapter)}</p></div><div class="attempt-clock"><span>${state.quiz.timeLimitSeconds ? "TIME LEFT" : "TIME TAKEN"}</span><b>${formatTime(state.quiz.timeLimitSeconds ? Math.max(0, state.quiz.timeLimitSeconds - elapsed) : elapsed)}</b></div></div><div class="attempt-progress"><span>QUESTION ${state.questionIndex + 1} OF ${questions.length}</span><div><i style="width:${((state.questionIndex + 1) / questions.length) * 100}%"></i></div><span>${marksLabel}</span></div><div class="attempt-layout"><article class="question-card"><div class="question-label">QUESTION ${String(state.questionIndex + 1).padStart(2, "0")} <span>·</span> ${escapeHtml(question.difficulty || "PRACTICE")}</div><h2 class="question-prompt">${formatQuestionText(question.text)}</h2>${diagram}<div class="answer-options">${options}</div><div class="question-controls"><button type="button" class="secondary-action" data-previous ${state.questionIndex === 0 ? "disabled" : ""}>← Previous</button>${state.questionIndex < questions.length - 1 ? `<button type="button" class="primary-action" data-next>Next question →</button>` : `<button type="button" class="primary-action" data-submit-quiz>Submit quiz</button>`}</div></article><aside class="question-sidebar"><b>QUESTION PALETTE</b><p>${answeredCount} of ${questions.length} answered. Unanswered questions remain unmarked.</p><div class="question-palette-list">${palette}</div><div class="palette-legend"><span></span> Answered</div></aside></div></section>`;
     return shell(content, "quiz");
   }
